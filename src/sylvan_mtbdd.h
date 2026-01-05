@@ -231,9 +231,24 @@ MTBDD mtbdd_double(double value);
 MTBDD mtbdd_fraction(int64_t numer, uint64_t denom);
 
 /**
+ * Create an integer pair leaf with the given values (each must be between -2^31+1 and 2^31-1).
+ */
+MTBDD mtbdd_int32_pair(int32_t first, int32_t second);
+
+/**
  * Obtain the value of an Integer leaf.
  */
 int64_t mtbdd_getint64(MTBDD terminal);
+
+/**
+ * Obtain the first value of an integer pair leaf.
+ */
+int32_t mtbdd_getint32_pair_first(MTBDD terminal);
+
+/**
+ * Obtain the second value of an integer pair leaf.
+ */
+int32_t mtbdd_getint32_pair_second(MTBDD terminal);
 
 /**
  * Obtain the value of a Real leaf.
@@ -526,6 +541,17 @@ TASK_DECL_3(MTBDD, mtbdd_abstract_op_max, MTBDD, MTBDD, int);
  * Compute max(a, b)
  */
 #define mtbdd_max(a, b) mtbdd_apply(a, b, TASK(mtbdd_op_max))
+
+/**
+ * Binary operation Cartesian product (for MTBDDs of Integer type)
+ * Takes two Integer MTBDDs and returns an Integer pair MTBDD.
+ */
+TASK_DECL_2(MTBDD, mtbdd_op_cartesian, MTBDD*, MTBDD*);
+
+/**
+ * Apply Cartesian product operation to two Integer MTBDDs.
+ */
+#define mtbdd_cartesian(a, b) mtbdd_apply(a, b, TASK(mtbdd_op_cartesian))
 
 /**
  * Abstract the variables in <v> from <a> by taking the sum of all values

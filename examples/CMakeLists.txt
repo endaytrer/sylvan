@@ -24,3 +24,7 @@ add_example(nqueens nqueens.c)
 
 add_example(simple simple.cpp)
 
+add_example(mtbdd_cartesian_example mtbdd_cartesian_example.c)
+add_example(mtbdd_cartesian_advanced_example mtbdd_cartesian_advanced_example.c)
+add_example(mtbdd_cartesian_simple_example mtbdd_cartesian_simple_example.c)
+

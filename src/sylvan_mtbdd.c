@@ -25,6 +25,8 @@
 #include <sylvan_sl.h>
 #include <sha2.h>
 
+static uint32_t int32_pair_type;
+
 /* Primitives */
 int
 mtbdd_isleaf(MTBDD bdd)
@@ -402,6 +404,9 @@ sylvan_init_mtbdd()
     if (mtbdd_initialized) return;
     mtbdd_initialized = 1;
 
+    /* Initialize 32-bit integer pair type */
+    int32_pair_type = sylvan_mt_create_type();
+
     sylvan_register_quit(mtbdd_quit);
     sylvan_gc_add_mark(TASK(mtbdd_gc_mark_external_refs));
     sylvan_gc_add_mark(TASK(mtbdd_gc_mark_protected));
@@ -580,6 +585,27 @@ mtbdd_fraction(int64_t nom, uint64_t denom)
     denom /= c;
     if (nom > 2147483647 || nom < -2147483647 || denom > 4294967295) fprintf(stderr, "mtbdd_fraction: fraction overflow\n");
     return mtbdd_makeleaf(2, (nom<<32)|denom);
+}
+
+MTBDD
+mtbdd_int32_pair(int32_t first, int32_t second)
+{
+    uint64_t value = ((uint64_t)(uint32_t)first) << 32 | ((uint64_t)(uint32_t)second);
+    return mtbdd_makeleaf(int32_pair_type, value);
+}
+
+int32_t
+mtbdd_getint32_pair_first(MTBDD terminal)
+{
+    uint64_t value = mtbdd_getvalue(terminal);
+    return (int32_t)(value >> 32);
+}
+
+int32_t
+mtbdd_getint32_pair_second(MTBDD terminal)
+{
+    uint64_t value = mtbdd_getvalue(terminal);
+    return (int32_t)(value & 0xffffffffLL);
 }
 
 /**
@@ -1375,6 +1401,37 @@ TASK_IMPL_2(MTBDD, mtbdd_op_max, MTBDD*, pa, MTBDD*, pb)
     if (a < b) {
         *pa = b;
         *pb = a;
+    }
+
+    return mtbdd_invalid;
+}
+
+/**
+ * Binary operation Cartesian Product (for integer MTBDDs)
+ * Only for MTBDDs where all leaves are integers (type 0)
+ * If either operand is mtbdd_false, the result is mtbdd_false
+ */
+TASK_IMPL_2(MTBDD, mtbdd_op_cartesian, MTBDD*, pa, MTBDD*, pb)
+{
+    MTBDD a = *pa, b = *pb;
+    if (a == mtbdd_false) return mtbdd_false;
+    if (b == mtbdd_false) return mtbdd_false;
+
+    // Handle Boolean MTBDDs: not compatible with Cartesian product
+    if (a == mtbdd_true || b == mtbdd_true) return mtbdd_false;
+
+    mtbddnode_t na = MTBDD_GETNODE(a);
+    mtbddnode_t nb = MTBDD_GETNODE(b);
+
+    if (mtbddnode_isleaf(na) && mtbddnode_isleaf(nb)) {
+        if (mtbddnode_gettype(na) == 0 && mtbddnode_gettype(nb) == 0) {
+            // both integer, create pair
+            int32_t i_a = (int32_t)mtbdd_getint64(a);
+            int32_t i_b = (int32_t)mtbdd_getint64(b);
+            return mtbdd_int32_pair(i_a, i_b);
+        } else {
+            assert(0); // failure
+        }
     }
 
     return mtbdd_invalid;
